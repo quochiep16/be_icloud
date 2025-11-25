@@ -26,7 +26,7 @@ async function bootstrap() {
 
   const allowedOrigins = [
     'http://localhost:5173',
-    'https://t-m-fe.onrender.com',
+    'https://fe-icloud.onrender.com',
   ];
 
   app.enableCors({
