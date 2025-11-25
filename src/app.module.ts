@@ -21,23 +21,26 @@ import { OrderItem } from './orders/entities/order-item.entity';
     }),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        type: 'postgres',
-        host: config.get<string>('DB_HOST'),
-        port: parseInt(config.get<string>('DB_PORT', '5432'), 10),
-        username: config.get<string>('DB_USERNAME'),
-        password: config.get<string>('DB_PASSWORD'),
-        database: config.get<string>('DB_NAME'),
-        entities: [User, Product, CartItem, Order, OrderItem],
-        synchronize: true,
+      useFactory: (config: ConfigService) => {
+        const useSSL = config.get<string>('DB_SSL', 'false') === 'true';
 
-        // QUAN TRỌNG: tắt SSL vì server không hỗ trợ
-        ssl: false,
-        // ❌ xoá block extra.ssl đi
-        // extra: {
-        //   ssl: { rejectUnauthorized: false },
-        // },
-      }),
+        return {
+          type: 'postgres',
+          host: config.get<string>('DB_HOST'),
+          port: parseInt(config.get<string>('DB_PORT', '5432'), 10),
+          username: config.get<string>('DB_USERNAME'),
+          password: config.get<string>('DB_PASSWORD'),
+          database: config.get<string>('DB_NAME'),
+          entities: [User, Product, CartItem, Order, OrderItem],
+          synchronize: true,
+
+          // 👇 Local: DB_SSL=false → ssl: false
+          // 👇 Render: DB_SSL=true  → ssl: { rejectUnauthorized: false }
+          ssl: useSSL
+            ? { rejectUnauthorized: false }
+            : false,
+        };
+      },
     }),
     AuthModule,
     UsersModule,
