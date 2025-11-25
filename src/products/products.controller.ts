@@ -25,6 +25,8 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { UserRole } from '../common/enums/user-role.enum';
 
+import cloudinary from '../cloudinary';
+
 @Controller('products')
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
@@ -57,7 +59,7 @@ export class ProductsController {
         },
       }),
       fileFilter: (req, file, cb) => {
-        if (!file.mimetype.startsWith('image/')) {
+        if (file && !file.mimetype.startsWith('image/')) {
           return cb(
             new BadRequestException('File tải lên phải là ảnh'),
             false,
@@ -78,8 +80,16 @@ export class ProductsController {
       throw new BadRequestException('Ảnh sản phẩm là bắt buộc');
     }
 
-    const imageUrl = `/uploads/products/${file.filename}`;
-    return this.productsService.create(dto, imageUrl);
+    try {
+      const uploadResult = await cloudinary.uploader.upload(file.path, {
+        folder: 'products',
+      });
+      const imageUrl = uploadResult.secure_url;
+      return this.productsService.create(dto, imageUrl);
+    } catch (error) {
+      console.error('Cloudinary upload error (create product):', error);
+      throw new BadRequestException('Upload ảnh thất bại');
+    }
   }
 
   // ADMIN: update (có thể đổi ảnh hoặc không)
@@ -116,7 +126,20 @@ export class ProductsController {
     @Body() dto: UpdateProductDto,
     @UploadedFile() file?: any,
   ) {
-    const imageUrl = file ? `/uploads/products/${file.filename}` : undefined;
+    let imageUrl: string | undefined;
+
+    if (file) {
+      try {
+        const uploadResult = await cloudinary.uploader.upload(file.path, {
+          folder: 'products',
+        });
+        imageUrl = uploadResult.secure_url;
+      } catch (error) {
+        console.error('Cloudinary upload error (update product):', error);
+        throw new BadRequestException('Upload ảnh thất bại');
+      }
+    }
+
     return this.productsService.update(+id, dto, imageUrl);
   }
 
